@@ -46,7 +46,8 @@ $ npm run start:dev
 # production mode
 $ npm run start:prod
 ```
-
+## .Env 
+add values with the file .env
 ## Test
 
 ```bash
