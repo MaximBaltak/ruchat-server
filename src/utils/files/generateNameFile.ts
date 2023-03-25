@@ -8,6 +8,6 @@ import {TypeFiles} from "../../enum/typeFiles";
  * */
 export const generateNameFile = (typeFile: TypeFiles, userName: string): string => {
     const extension: string = typeFile.match(/\w+$/i)[0]
-    const buffer = Buffer.from(`${new Date().toLocaleDateString()}`, 'utf-8')
+    const buffer = Buffer.from(`${new Date().getMilliseconds()}`, 'utf-8')
     return `${buffer.toString('base64')}${userName}.${extension}`
 }

@@ -5,7 +5,7 @@ import {FileService} from "../../file/file.service";
 import {InjectRepository} from "@nestjs/typeorm";
 import {UserEntity} from "../../../db/entities/User.entity";
 import {Repository} from "typeorm";
-import {hashSync} from 'bcrypt'
+import {compareSync, hashSync} from 'bcrypt'
 import {ResponseUserDto} from "../dto/ResponseUser.dto";
 import {SavedFile} from "../../file/types/savedFile";
 
@@ -48,9 +48,8 @@ export class AuthService {
      * @param {string} email - email пользователя
      * @return {Promise<boolean>} существует ли пользователь в БД
      * */
-    async #checkUser(email: string): Promise<boolean> {
-        const user: UserEntity = await this.UserRepository.findOneBy({email})
-        return !!user;
+    async #checkUser(email: string): Promise<UserEntity> {
+        return await this.UserRepository.findOneBy({email});
 
     }
 
@@ -67,8 +66,8 @@ export class AuthService {
     public async registrationUser(userName: string,
                                   password: string, email: string,
                                   file: Express.Multer.File = null): Promise<ResponseUserDto> {
-        const isUser: boolean = await this.#checkUser(email)
-        if (isUser) throw new Error('Пользователь уже существует')
+        const user: UserEntity = await this.#checkUser(email)
+        if (user) throw new Error('Пользователь уже существует')
 
         const hashPassword: string = hashSync(password, 5)
 
@@ -81,7 +80,7 @@ export class AuthService {
         newUser.userName = userName
         newUser.password = hashPassword
         newUser.email = email
-        newUser.avatar = savedFile.fileName
+        newUser.avatar = savedFile ? savedFile.fileName : null
         newUser.refreshToken = refreshToken
         await this.UserRepository.save(newUser)
 
@@ -106,6 +105,37 @@ export class AuthService {
             },
             accessToken,
             refreshToken: createdUser.refreshToken
+        }
+    }
+
+    /**
+     * @public
+     * @async
+     * @desc Получает пользователя из в БД
+     * @param {string} password - пароль пользователя
+     * @param {string} email - email пользователя
+     * @return {Promise<ResponseUserDto>} объект авторизованного пользователя и его токены
+     * */
+    public async loginUser(password: string, email: string): Promise<ResponseUserDto> {
+        const user: UserEntity = await this.#checkUser(email)
+        if (!user) throw new Error('Пользователь не существует')
+        if (!compareSync(password, user.password)) throw new Error('Пользователя не существует')
+
+        const refreshToken: string = this.#generateRefreshToken({createDateToken: new Date()})
+        const accessToken: string = this.#generateAccessToken({
+            id: user.id,
+            email: user.email
+        })
+        await this.UserRepository.update({id: user.id}, {refreshToken})
+        return {
+            user: {
+                id: user.id,
+                userName: user.userName,
+                isConfirmEmail: user.isConfirmEmail,
+                avatar: user.avatar ? `${process.env.APP_SERVER_URL}/file/${user.avatar}` : null
+            },
+            accessToken,
+            refreshToken
         }
     }
 }
