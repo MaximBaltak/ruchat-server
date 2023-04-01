@@ -118,8 +118,8 @@ export class AuthService {
      * */
     public async loginUser(password: string, email: string): Promise<ResponseUserDto> {
         const user: UserEntity = await this.#checkUser(email)
-        if (!user) throw new Error('Пользователь не существует')
-        if (!compareSync(password, user.password)) throw new Error('Пользователя не существует')
+        if (!user) throw new Error('Такого пользователя не существует')
+        if (!compareSync(password, user.password)) throw new Error('Такого пользователя не существует')
 
         const refreshToken: string = this.#generateRefreshToken({createDateToken: new Date()})
         const accessToken: string = this.#generateAccessToken({
